@@ -16,7 +16,7 @@ call print_string
 
 ; Load kernel from disk
 mov bx, KERNEL_OFFSET  ; Buffer offset (ES:BX = 0x0000:0x1000)
-mov dh, 15             ; Read 15 sectors (more than enough for simple kernel)
+mov dh, 40             ; Read 40 sectors (plenty of room for C kernel expansion)
 mov dl, [BOOT_DRIVE]   ; Use saved boot drive
 call disk_load
 
