@@ -22,6 +22,8 @@ LD_FLAGS = -m elf_i386 -Ttext 0x1000 --oformat binary
 KERNEL_OBJS = $(BUILD_DIR)/kernel_asm.o \
               $(BUILD_DIR)/ports.o \
               $(BUILD_DIR)/string.o \
+              $(BUILD_DIR)/mem.o \
+              $(BUILD_DIR)/fs.o \
               $(BUILD_DIR)/screen.o \
               $(BUILD_DIR)/keyboard.o \
               $(BUILD_DIR)/kernel_c.o
@@ -45,13 +47,19 @@ $(BUILD_DIR)/ports.o: $(SRC_DIR)/cpu/ports.asm | $(BUILD_DIR)
 $(BUILD_DIR)/string.o: $(SRC_DIR)/libc/string.c $(SRC_DIR)/libc/string.h | $(BUILD_DIR)
 	$(CC) $(CC_FLAGS) $< -o $@
 
+$(BUILD_DIR)/mem.o: $(SRC_DIR)/libc/mem.c $(SRC_DIR)/libc/mem.h | $(BUILD_DIR)
+	$(CC) $(CC_FLAGS) $< -o $@
+
+$(BUILD_DIR)/fs.o: $(SRC_DIR)/kernel/fs.c $(SRC_DIR)/kernel/fs.h $(SRC_DIR)/libc/mem.h $(SRC_DIR)/libc/string.h | $(BUILD_DIR)
+	$(CC) $(CC_FLAGS) $< -o $@
+
 $(BUILD_DIR)/screen.o: $(SRC_DIR)/drivers/screen.c $(SRC_DIR)/drivers/screen.h $(SRC_DIR)/cpu/ports.h | $(BUILD_DIR)
 	$(CC) $(CC_FLAGS) $< -o $@
 
 $(BUILD_DIR)/keyboard.o: $(SRC_DIR)/drivers/keyboard.c $(SRC_DIR)/drivers/keyboard.h $(SRC_DIR)/cpu/ports.h $(SRC_DIR)/drivers/screen.h | $(BUILD_DIR)
 	$(CC) $(CC_FLAGS) $< -o $@
 
-$(BUILD_DIR)/kernel_c.o: $(SRC_DIR)/kernel/kernel.c $(SRC_DIR)/cpu/ports.h $(SRC_DIR)/drivers/screen.h $(SRC_DIR)/drivers/keyboard.h $(SRC_DIR)/libc/string.h | $(BUILD_DIR)
+$(BUILD_DIR)/kernel_c.o: $(SRC_DIR)/kernel/kernel.c $(SRC_DIR)/cpu/ports.h $(SRC_DIR)/drivers/screen.h $(SRC_DIR)/drivers/keyboard.h $(SRC_DIR)/libc/string.h $(SRC_DIR)/libc/mem.h $(SRC_DIR)/kernel/fs.h | $(BUILD_DIR)
 	$(CC) $(CC_FLAGS) $< -o $@
 
 $(BUILD_DIR)/kernel.bin: $(KERNEL_OBJS)

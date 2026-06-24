@@ -23,10 +23,103 @@ static const char scancode_map[128] = {
     'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' '
 };
 
+// Mapping of keys when Shift is pressed
+static const char shift_map[128] = {
+    0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b', '\t',
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n', 0,
+    'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0, '|',
+    'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*', 0, ' '
+};
+
+// Mapping of keys when AltGr is pressed
+static const char altgr_map[128] = {
+    [0x03] = '@',  // AltGr + 2
+    [0x04] = '#',  // AltGr + 3
+    [0x08] = '{',  // AltGr + 7
+    [0x09] = '[',  // AltGr + 8
+    [0x0A] = ']',  // AltGr + 9
+    [0x0B] = '}',  // AltGr + 0
+    [0x10] = '@',  // AltGr + q
+    [0x1A] = '[',  // AltGr + [ (è in IT)
+    [0x1B] = ']',  // AltGr + ] (+ in IT)
+    [0x27] = '@',  // AltGr + ; (ò in IT)
+    [0x28] = '#'   // AltGr + ' (à in IT)
+};
+
+// Mapping of keys when both Shift and AltGr are pressed
+static const char altgr_shift_map[128] = {
+    [0x1A] = '{',  // AltGr + Shift + [ (è in IT)
+    [0x1B] = '}'   // AltGr + Shift + ] (+ in IT)
+};
+
+// State variables for key modifiers
+static int lshift_pressed = 0;
+static int rshift_pressed = 0;
+static int shift_pressed = 0;
+static int altgr_pressed = 0;
+static int extended = 0;
+
 // Map hardware key press scancode to ASCII character
 char scancode_to_ascii(unsigned char code) {
-    if (code >= 0x80) return 0; // Ignore break codes (key release events)
-    return scancode_map[code];
+    // 1. Handle extended key prefix
+    if (code == 0xE0) {
+        extended = 1;
+        return 0;
+    }
+    
+    // 2. Track modifier state on press/release
+    int is_release = (code & 0x80) != 0;
+    unsigned char clean_code = code & 0x7F;
+    
+    if (extended) {
+        extended = 0; // Clear extended flag immediately for subsequent bytes
+        
+        // Right Alt (AltGr) has scancode 0x38 in extended state
+        if (clean_code == 0x38) {
+            altgr_pressed = !is_release;
+        }
+        return 0;
+    }
+    
+    // Non-extended modifier keys
+    if (clean_code == 0x2A) { // Left Shift
+        lshift_pressed = !is_release;
+        shift_pressed = lshift_pressed || rshift_pressed;
+        return 0;
+    }
+    if (clean_code == 0x36) { // Right Shift
+        rshift_pressed = !is_release;
+        shift_pressed = lshift_pressed || rshift_pressed;
+        return 0;
+    }
+    
+    // Ignore all other key release events
+    if (is_release) {
+        return 0;
+    }
+    
+    // 3. Resolve the mapped key based on modifier states
+    if (altgr_pressed && shift_pressed) {
+        char c = altgr_shift_map[clean_code];
+        if (c != 0) return c;
+    }
+    
+    if (altgr_pressed) {
+        char c = altgr_map[clean_code];
+        if (c != 0) return c;
+    }
+    
+    if (shift_pressed) {
+        if (clean_code < 128) {
+            return shift_map[clean_code];
+        }
+    } else {
+        if (clean_code < 128) {
+            return scancode_map[clean_code];
+        }
+    }
+    
+    return 0;
 }
 
 // Read a full command line from keyboard
